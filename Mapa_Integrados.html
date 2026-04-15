@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Geolocalizaciones Integrados</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: Arial, sans-serif; background:#f5f5f5; }
+#header { background:#fff; padding:12px 20px; border-bottom:1px solid #ddd; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+#header h1 { font-size:17px; font-weight:700; color:#222; }
+#stats { display:flex; gap:16px; flex-wrap:wrap; }
+.stat { text-align:center; }
+.stat-n { font-size:20px; font-weight:700; }
+.stat-l { font-size:11px; color:#777; }
+#legend { background:#fff; padding:8px 20px; border-bottom:1px solid #ddd; display:flex; gap:20px; flex-wrap:wrap; align-items:center; }
+.leg { display:flex; align-items:center; gap:7px; font-size:13px; color:#333; }
+.dot { width:13px; height:13px; border-radius:50%; flex-shrink:0; }
+#filters { background:#fff; padding:8px 20px; border-bottom:1px solid #ddd; display:flex; gap:8px; flex-wrap:wrap; }
+.fbtn { padding:5px 14px; border:1px solid #ccc; border-radius:20px; font-size:12px; cursor:pointer; background:#fff; color:#333; }
+.fbtn.active { background:#1a73e8; color:#fff; border-color:#1a73e8; }
+#map { width:100%; height:calc(100vh - 140px); min-height:400px; }
+.popup-name { font-weight:700; font-size:14px; margin-bottom:4px; }
+.popup-cat { font-size:12px; color:#555; }
+.popup-code { font-size:11px; color:#888; margin-top:3px; font-family:monospace; }
+.popup-gmaps { display:inline-block; margin-top:8px; padding:5px 12px; background:#1a73e8; color:#fff; border-radius:4px; font-size:12px; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Mapa Geolocalizaciones — Cebaderos Integrados</h1>
+  <div id="stats">
+    <div class="stat"><div class="stat-n" style="color:#1a73e8">90</div><div class="stat-l">Total</div></div>
+    <div class="stat"><div class="stat-n" style="color:#378ADD">47</div><div class="stat-l">PORTESA Cebaderos</div></div>
+    <div class="stat"><div class="stat-n" style="color:#1D9E75">36</div><div class="stat-l">COPISO Cebaderos</div></div>
+    <div class="stat"><div class="stat-n" style="color:#D85A30">4</div><div class="stat-l">PORTESA Madres</div></div>
+    <div class="stat"><div class="stat-n" style="color:#854F0B">1</div><div class="stat-l">PORTESA CIA</div></div>
+  </div>
+</div>
+
+<div id="legend">
+  <div class="leg"><div class="dot" style="background:#378ADD"></div>PORTESA Cebaderos</div>
+  <div class="leg"><div class="dot" style="background:#1D9E75"></div>COPISO Cebaderos</div>
+  <div class="leg"><div class="dot" style="background:#D85A30"></div>PORTESA Madres</div>
+  <div class="leg"><div class="dot" style="background:#854F0B"></div>PORTESA CIA</div>
+</div>
+
+<div id="filters">
+  <button class="fbtn active" data-cat="all">Todas (90)</button>
+  <button class="fbtn" data-cat="portesa_ceb">PORTESA Cebaderos (47)</button>
+  <button class="fbtn" data-cat="copiso_ceb">COPISO Cebaderos (36)</button>
+  <button class="fbtn" data-cat="portesa_mad">PORTESA Madres (4)</button>
+  <button class="fbtn" data-cat="portesa_cia">PORTESA CIA (1)</button>
+</div>
+
+<div id="map"></div>
+
+<script>
+const DATA = [
+  {name:"Alcaben C.B",cat:"portesa_ceb",code:"ES 44 028 0000001",lat:40.681246,lng:-1.161332},
+  {name:"Alcaben C.B (2)",cat:"portesa_ceb",code:"ES 44 028 0000001",lat:40.681575,lng:-1.161066},
+  {name:"Alcaben C.B (3)",cat:"portesa_ceb",code:"ES 44 028 0000001",lat:40.682163,lng:-1.161259},
+  {name:"Pinquincos",cat:"portesa_ceb",code:"ES 44 089 0000001",lat:40.247824,lng:-1.106776},
+  {name:"Pinquincos (2)",cat:"portesa_ceb",code:"ES 44 089 0000001",lat:40.247324,lng:-1.106505},
+  {name:"Bersen 1",cat:"portesa_ceb",code:"ES 44 144 0000002",lat:40.844496,lng:-0.877525},
+  {name:"Bersen 2",cat:"portesa_ceb",code:"ES 44 144 0000005",lat:40.839075,lng:-0.856305},
+  {name:"Cella Porcino, SL",cat:"portesa_ceb",code:"ES 44 076 0000246",lat:40.451113,lng:-1.220058},
+  {name:"Daniel Mengod",cat:"portesa_ceb",code:"ES 44 263 0000002",lat:40.298557,lng:-1.175896},
+  {name:"Daniel Sanz",cat:"portesa_ceb",code:"ES 44 169 0000004",lat:40.763738,lng:-1.435519},
+  {name:"El Molinazo 1",cat:"portesa_ceb",code:"ES 44 076 0000008",lat:40.440085,lng:-1.244616},
+  {name:"El Molinazo 2",cat:"portesa_ceb",code:"ES 44 076 0000245",lat:40.488482,lng:-1.314151},
+  {name:"Elvira Sanchez Torres",cat:"portesa_ceb",code:"ES 44 076 0000109",lat:40.447236,lng:-1.267018},
+  {name:"Eva Lucia 2",cat:"portesa_ceb",code:"ES 44 228 0000008",lat:40.590489,lng:-1.248096},
+  {name:"Eva Lucia Perez Rodriguez",cat:"portesa_ceb",code:"ES 44 228 0000002",lat:40.588311,lng:-1.287627},
+  {name:"Eva Maria Pellicer Zorraquino",cat:"portesa_ceb",code:"ES 44 251 0000054",lat:40.691327,lng:-1.357841},
+  {name:"Fernando Castellote Herrero",cat:"portesa_ceb",code:"ES 44 094 0000023",lat:40.440333,lng:-1.035468},
+  {name:"Gloria Garzaran Plumed",cat:"portesa_ceb",code:"ES 44 153 0000172",lat:40.763080,lng:-1.356649},
+  {name:"Gloria Garzaran Plumed 2",cat:"portesa_ceb",code:"ES 44 153 0000185",lat:40.741675,lng:-1.356900},
+  {name:"Gregorio Pina Juste 2",cat:"portesa_ceb",code:"ES 44 085 0000003",lat:40.820687,lng:-1.155412},
+  {name:"Hnos. Arnau Fuertes SL",cat:"portesa_ceb",code:"ES 44 192 0000001",lat:40.251870,lng:-0.959137},
+  {name:"Isabel Lilao Izquierdo",cat:"portesa_ceb",code:"ES 44 076 0000234",lat:40.439503,lng:-1.261212},
+  {name:"Isabel Lilao Izquierdo (2)",cat:"portesa_ceb",code:"ES 44 076 0000234",lat:40.439644,lng:-1.260096},
+  {name:"Javier Gonzalvo Andres",cat:"portesa_ceb",code:"ES 44 053 0000005",lat:40.655331,lng:-1.119859},
+  {name:"Jesus Martin Guillen",cat:"portesa_ceb",code:"ES 44 216 0000066",lat:40.419639,lng:-1.213702},
+  {name:"Jesus Martin Guillen (2)",cat:"portesa_ceb",code:"ES 44 216 0000066",lat:40.420347,lng:-1.213856},
+  {name:"Explotaciones Ganderas Sanguesa Herrera",cat:"portesa_ceb",code:"ES 44 115 0000003",lat:40.643170,lng:-0.874023},
+  {name:"Fernando Joaquin Ibanez Gimeno",cat:"portesa_ceb",code:"ES 44 251 0000010",lat:40.707232,lng:-1.381431},
+  {name:"Fernando Joaquin Ibanez Gimeno (2)",cat:"portesa_ceb",code:"ES 44 251 0000010",lat:40.706919,lng:-1.380793},
+  {name:"Fernando Joaquin Ibanez Gimeno (3)",cat:"portesa_ceb",code:"ES 44 251 0000010",lat:40.706645,lng:-1.380458},
+  {name:"Jose Antonio Andres Domingo",cat:"portesa_ceb",code:"ES 44 251 0000059",lat:40.670311,lng:-1.358313},
+  {name:"Jose Gomez Monterde",cat:"portesa_ceb",code:"ES 44 017 0000003",lat:40.702772,lng:-0.680542},
+  {name:"Las Canadas de Torralba",cat:"portesa_ceb",code:"ES 44 220 0000045",lat:40.899475,lng:-1.436742},
+  {name:"Las Canadas de Torralba (2)",cat:"portesa_ceb",code:"ES 44 220 0000045",lat:40.899895,lng:-1.436238},
+  {name:"Los Aliagares SC",cat:"portesa_ceb",code:"ES 44 182 0000009",lat:40.614088,lng:-0.980945},
+  {name:"Ma Jose Fernandez Talabante",cat:"portesa_ceb",code:"ES 44 053 0000003",lat:40.634098,lng:-1.116703},
+  {name:"Patricia Salvador Cano",cat:"portesa_ceb",code:"ES 44 263 0000025",lat:40.249946,lng:-1.125815},
+  {name:"Pedro Antonio Martinez Gonzalez",cat:"portesa_ceb",code:"ES 44 120 0000001",lat:40.391583,lng:-1.700919},
+  {name:"Pedro Monton Gil",cat:"portesa_ceb",code:"ES 44 182 0000004",lat:40.632096,lng:-0.996590},
+  {name:"Rafael Lanzuela Gonzalvo",cat:"portesa_ceb",code:"ES 44 076 0000222",lat:40.432115,lng:-1.251475},
+  {name:"Romero SC",cat:"portesa_ceb",code:"ES 44 076 0000247",lat:40.423384,lng:-1.268180},
+  {name:"Rosa Maria Larred Gines",cat:"portesa_ceb",code:"ES 44 056 0000132",lat:40.843915,lng:-1.305286},
+  {name:"Ruben Andres",cat:"portesa_ceb",code:"ES 44 213 0000016",lat:40.665313,lng:-1.334413},
+  {name:"Grupo Sanchez Morey",cat:"portesa_ceb",code:"ES 44 007 0000005",lat:40.607661,lng:-1.342819},
+  {name:"Grupo Sanchez Morey (2)",cat:"portesa_ceb",code:"ES 44 007 0000005",lat:40.607013,lng:-1.343271},
+  {name:"Ternerter",cat:"portesa_ceb",code:"ES 44 216 0000097",lat:40.355464,lng:-1.151502},
+  {name:"Tozin SC",cat:"portesa_ceb",code:"ES 44 153 0000181",lat:40.761876,lng:-1.320742},
+  {name:"T.Y.G.A.P",cat:"portesa_ceb",code:"ES 44 076 0000213",lat:40.467301,lng:-1.243947},
+  {name:"Agricola La Tejeria",cat:"copiso_ceb",code:"ES 44 074 0000004",lat:40.466006,lng:-0.852883},
+  {name:"Ana Maria Centelles",cat:"copiso_ceb",code:"ES 12 026 0000048",lat:40.397272,lng:-0.167360},
+  {name:"Crianzas Campo Vivo 1",cat:"copiso_ceb",code:"ES 44 034 0000033",lat:40.845773,lng:-1.241089},
+  {name:"Crianzas Campo Vivo 2",cat:"copiso_ceb",code:"ES 44 034 0000034",lat:40.858784,lng:-1.245694},
+  {name:"Daniel Monton Jimenez",cat:"copiso_ceb",code:"ES 44 174 0000002",lat:40.552304,lng:-1.620567},
+  {name:"Francisco Javier Moreno",cat:"copiso_ceb",code:"ES 44 025 0000003",lat:40.948239,lng:-0.412502},
+  {name:"Gomez Rubio SC",cat:"copiso_ceb",code:"ES 44 267 0000004",lat:40.877771,lng:-0.932725},
+  {name:"Gomez Rubio SC (2)",cat:"copiso_ceb",code:"ES 44 267 0000004",lat:40.878110,lng:-0.933181},
+  {name:"Gonzalvo Izquierdo SL",cat:"copiso_ceb",code:"ES 44 074 0000002",lat:40.463172,lng:-0.849411},
+  {name:"Gregorio Pina Juste",cat:"copiso_ceb",code:"ES 44 050 0000145",lat:40.882509,lng:-1.318272},
+  {name:"Hnos. Angosto Cantin CB",cat:"copiso_ceb",code:"ES 44 034 0000031",lat:40.834124,lng:-1.251401},
+  {name:"Hnos. Lopez Ros",cat:"copiso_ceb",code:"ES 44 185 0000001",lat:40.476157,lng:-0.867664},
+  {name:"Ismael Perez Simon",cat:"copiso_ceb",code:"ES 44 263 0000024",lat:40.265660,lng:-1.147598},
+  {name:"Joaquin Herrera Gil",cat:"copiso_ceb",code:"ES 50 040 0000006",lat:41.151057,lng:-1.257652},
+  {name:"Joaquin Herrera Gil (2)",cat:"copiso_ceb",code:"ES 50 040 0000006",lat:41.151126,lng:-1.257252},
+  {name:"Jose Antonio Hernandez Barrachina",cat:"copiso_ceb",code:"ES 44 169 0000020",lat:40.747714,lng:-1.479832},
+  {name:"Jose Antonio Hernandez Barrachina (2)",cat:"copiso_ceb",code:"ES 44 169 0000020",lat:40.747838,lng:-1.479317},
+  {name:"Jose Antonio Dobon Argente",cat:"copiso_ceb",code:"ES 44 216 0000200",lat:40.418070,lng:-1.071975},
+  {name:"Jose Antonio Dobon Argente (2)",cat:"copiso_ceb",code:"ES 44 216 0000200",lat:40.417774,lng:-1.072015},
+  {name:"Joaquin Dobon El Busto",cat:"copiso_ceb",code:"ES 44 216 0000055",lat:40.384718,lng:-1.127515},
+  {name:"Jose Luis Alos Perez",cat:"copiso_ceb",code:"ES 44 112 0000002",lat:40.868462,lng:-1.290242},
+  {name:"Ma Luisa Rubio Hernandez",cat:"copiso_ceb",code:"ES 44 076 0000003",lat:40.427331,lng:-1.286326},
+  {name:"Manas Puertolas SC",cat:"copiso_ceb",code:"ES 44 065 0000007",lat:41.004148,lng:-1.439254},
+  {name:"Miguel Angel Teca",cat:"copiso_ceb",code:"ES 12 071 0000036",lat:39.906472,lng:-0.563940},
+  {name:"Ramon Sanz Lanzuela",cat:"copiso_ceb",code:"ES 44 076 0000226",lat:40.458635,lng:-1.291144},
+  {name:"Serrano Hervas SC",cat:"copiso_ceb",code:"ES 44 261 0000127",lat:40.539742,lng:-1.277619},
+  {name:"Terraiberica desarrollos SL 1",cat:"copiso_ceb",code:"ES 44 074 0000003",lat:40.466848,lng:-0.846848},
+  {name:"Terraiberica desarrollos SL 2",cat:"copiso_ceb",code:"ES 44 074 0000003",lat:40.470359,lng:-0.856400},
+  {name:"Terraiberica desarrollos SL 3",cat:"copiso_ceb",code:"ES 44 156 0000001",lat:40.494619,lng:-0.814906},
+  {name:"Ma Teresa Vinado Lorente",cat:"copiso_ceb",code:"ES 44 251 0000060",lat:40.729885,lng:-1.339071},
+  {name:"El Romeral",cat:"copiso_ceb",code:"ES 16 117 0000063",lat:39.931124,lng:-1.300190},
+  {name:"Jose Antonio Hernandez Jarque 1",cat:"copiso_ceb",code:"ES 16 117 0000089",lat:39.916592,lng:-1.342685},
+  {name:"Jose Antonio Hernandez Jarque 2",cat:"copiso_ceb",code:"ES 16 117 0000066",lat:39.903988,lng:-1.372761},
+  {name:"Jose Antonio Hernandez Jarque 3",cat:"copiso_ceb",code:"ES 16 117 0000067",lat:39.913451,lng:-1.358965},
+  {name:"Miguel Angel Teca (2)",cat:"copiso_ceb",code:"",lat:39.907366,lng:-0.563933},
+  {name:"GRANJA LOMAS RASAS",cat:"portesa_mad",code:"ES 44 053 0000002",lat:40.624554,lng:-1.141254},
+  {name:"GRANJA LAS FUENTES",cat:"portesa_mad",code:"ES 44 123 0000001",lat:40.681611,lng:-0.767324},
+  {name:"GRANJA LAS FUENTES (2)",cat:"portesa_mad",code:"ES 44 123 0000001",lat:40.679724,lng:-0.767457},
+  {name:"GRANJA CANALAFUENTE",cat:"portesa_mad",code:"ES 44 213 0000013",lat:40.678642,lng:-1.335990},
+  {name:"CIA LA SOLANA",cat:"portesa_cia",code:"ES 44 053 0000001",lat:40.621756,lng:-1.162141}
+];
+
+const COLORS = { portesa_ceb:'#378ADD', copiso_ceb:'#1D9E75', portesa_mad:'#D85A30', portesa_cia:'#854F0B' };
+const LABELS  = { portesa_ceb:'PORTESA Cebaderos', copiso_ceb:'COPISO Cebaderos', portesa_mad:'PORTESA Madres', portesa_cia:'PORTESA CIA' };
+
+function makeIcon(color) {
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='32' viewBox='0 0 24 32'><path d='M12 0C5.4 0 0 5.4 0 12c0 8.4 12 20 12 20S24 20.4 24 12C24 5.4 18.6 0 12 0z' fill='" + color + "'/><circle cx='12' cy='12' r='5' fill='white'/></svg>";
+  return L.divIcon({ html: svg, iconSize:[24,32], iconAnchor:[12,32], popupAnchor:[0,-34], className:'' });
+}
+
+const map = L.map('map').setView([40.55, -1.1], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 19
+}).addTo(map);
+
+const markers = [];
+DATA.forEach(function(d) {
+  const m = L.marker([d.lat, d.lng], { icon: makeIcon(COLORS[d.cat]) });
+  m.bindPopup(
+    '<div class="popup-name">' + d.name + '</div>' +
+    '<div class="popup-cat">' + LABELS[d.cat] + '</div>' +
+    (d.code ? '<div class="popup-code">' + d.code + '</div>' : '') +
+    '<a class="popup-gmaps" href="https://www.google.com/maps?q=' + d.lat + ',' + d.lng + '" target="_blank">Ver en Google Maps</a>'
+  );
+  m.cat = d.cat;
+  m.addTo(map);
+  markers.push(m);
+});
+
+document.querySelectorAll('.fbtn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+    var cat = this.getAttribute('data-cat');
+    markers.forEach(function(m) {
+      if (cat === 'all' || m.cat === cat) m.addTo(map);
+      else map.removeLayer(m);
+    });
+  });
+});
+</script>
+</body>
+</html>
