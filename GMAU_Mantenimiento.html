@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GMAU — Gestión de Mantenimiento · Fábrica de Piensos</title>
+  <style>
+    :root {
+      --primary:       #1a5276;
+      --primary-light: #2980b9;
+      --secondary:     #2ecc71;
+      --warning:       #e67e22;
+      --danger:        #e74c3c;
+      --bg:            #f0f2f5;
+      --card-bg:       #ffffff;
+      --text:          #2c3e50;
+      --border:        #dde3ea;
+      --radius:        6px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    /* ── TOP BAR ── */
+    #topbar {
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    #topbar-brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon { font-size: 22px; }
+    #topbar-brand > span:nth-child(2) { font-size: 16px; font-weight: 700; }
+    #topbar-sub { font-size: 12px; font-weight: 400; opacity: 0.7; }
+    #topbar-clock { font-size: 13px; opacity: 0.85; }
+
+    /* ── TABS ── */
+    #tabs {
+      background: #fff;
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      padding: 0 16px;
+      position: sticky;
+      top: 56px;
+      z-index: 99;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 14px 18px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #7f8c8d;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .tab:hover { color: var(--primary); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+
+    /* ── CONTENT ── */
+    #content { padding: 20px; min-height: calc(100vh - 110px); }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── SECTION TOOLBAR ── */
+    .section-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section-toolbar h2 { font-size: 20px; color: var(--primary); }
+    .toolbar-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* ── KPI CARDS ── */
+    #kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      border-left: 4px solid var(--primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .kpi-card.warning { border-left-color: var(--warning); }
+    .kpi-card.danger  { border-left-color: var(--danger); }
+    .kpi-card.success { border-left-color: var(--secondary); }
+    .kpi-value { font-size: 36px; font-weight: 700; color: var(--primary); line-height: 1; }
+    .kpi-card.warning .kpi-value { color: var(--warning); }
+    .kpi-card.danger  .kpi-value { color: var(--danger); }
+    .kpi-card.success .kpi-value { color: var(--secondary); }
+    .kpi-label { font-size: 11px; color: #7f8c8d; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── DASHBOARD GRID ── */
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card h3 {
+      font-size: 12px;
+      color: var(--primary);
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── ALERTAS ── */
+    #lista-alertas { list-style: none; }
+    #lista-alertas li {
+      padding: 10px 12px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    #lista-alertas li.alerta-vencida { background: #fdecea; color: #c0392b; border-left: 3px solid #c0392b; }
+    #lista-alertas li.alerta-proxima { background: #fef9e7; color: #d68910; border-left: 3px solid #e67e22; }
+    .alerta-info { font-weight: 700; }
+    .alerta-equipo { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .alerta-dias { white-space: nowrap; font-size: 12px; font-weight: 700; }
+    #sin-alertas { color: #27ae60; font-size: 13px; padding: 12px 0; }
+
+    /* ── TABLES ── */
+    .table-wrapper { overflow-x: auto; border-radius: var(--radius); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    thead th {
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8f9ff; }
+    tbody td { padding: 10px 12px; vertical-align: middle; }
+    tr.row-vencida { background: #fdecea !important; }
+    tr.row-vencida:hover { background: #f5b7b1 !important; }
+    tr.row-proxima { background: #fef9e7 !important; }
+    tr.row-proxima:hover { background: #fdebd0 !important; }
+    .td-acciones { white-space: nowrap; }
+    .empty-row td { text-align: center; color: #95a5a6; font-style: italic; padding: 28px !important; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .badge-operativo        { background: #d5f5e3; color: #1e8449; }
+    .badge-averiado         { background: #fdecea; color: #c0392b; }
+    .badge-en_mantenimiento { background: #fef9e7; color: #d68910; }
+    .badge-pendiente        { background: #ecf0f1; color: #7f8c8d; }
+    .badge-en_proceso       { background: #d6eaf8; color: #1a5276; }
+    .badge-completada       { background: #d5f5e3; color: #1e8449; }
+    .badge-cancelada        { background: #fdecea; color: #c0392b; }
+    .badge-abierta          { background: #fef9e7; color: #d68910; }
+    .badge-resuelta         { background: #d5f5e3; color: #1e8449; }
+    .badge-alta             { background: #fdecea; color: #c0392b; }
+    .badge-media            { background: #fef9e7; color: #d68910; }
+    .badge-baja             { background: #eafaf1; color: #1e8449; }
+    .badge-vencida          { background: #fdecea; color: #c0392b; }
+    .badge-correctivo       { background: #fdecea; color: #922b21; }
+    .badge-preventivo       { background: #d6eaf8; color: #1a5276; }
+
+    /* ── BUTTONS ── */
+    .btn-primary, .btn-secondary, .btn-sm {
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .btn-primary   { background: var(--primary); color: #fff; padding: 8px 16px; }
+    .btn-secondary { background: #ecf0f1; color: var(--text); padding: 8px 16px; }
+    .btn-primary:hover, .btn-secondary:hover { opacity: 0.85; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 3px; }
+    .btn-info    { background: #d6eaf8; color: #1a5276; }
+    .btn-warning { background: #fef9e7; color: #d68910; border: 1px solid #f0c060; }
+    .btn-danger  { background: #fdecea; color: #c0392b; border: 1px solid #e9a0a0; }
+    .btn-success { background: #d5f5e3; color: #1e8449; border: 1px solid #7dcea0; }
+    .btn-sm:hover { opacity: 0.8; }
+
+    /* ── FILTERS ── */
+    .filter-select {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* ── MODAL ── */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #modal-overlay.hidden { display: none; }
+    #modal-box {
+      background: #fff;
+      border-radius: var(--radius);
+      width: min(600px, 95vw);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    #modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #modal-titulo { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #95a5a6;
+      line-height: 1;
+      padding: 2px 6px;
+      font-family: inherit;
+    }
+    .modal-close:hover { color: var(--danger); }
+    #modal-body { overflow-y: auto; padding: 20px; flex: 1; }
+    #modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #modal-guardar-btn.hidden { display: none; }
+
+    /* ── FORMS ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-full  { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 12px; font-weight: 700; color: #555; margin-bottom: 4px; }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { outline: none; border-color: var(--primary); }
+    .form-group input.error,
+    .form-group select.error,
+    .form-group textarea.error { border-color: var(--danger); }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+
+    /* ── DETAIL VIEW ── */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .detail-field { padding: 10px 12px; background: #f8f9fa; border-radius: 4px; }
+    .detail-label { font-size: 11px; font-weight: 700; color: #95a5a6; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+    .detail-value { font-size: 14px; color: var(--text); }
+    .detail-full { grid-column: 1 / -1; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      background: #2c3e50;
+      color: #fff;
+      font-size: 14px;
+      z-index: 2000;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      max-width: 320px;
+    }
+    #toast.hidden { display: none; }
+    #toast.success { background: #27ae60; }
+    #toast.error   { background: var(--danger); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      #kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .section-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .section-toolbar { flex-direction: column; align-items: flex-start; }
+      #topbar-sub { display: none; }
+    }
+    @media (max-width: 420px) {
+      #kpi-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div id="topbar-brand">
+      <span class="brand-icon">&#9881;</span>
+      <span>GMAU &middot; Gesti&oacute;n de Mantenimiento</span>
+      <span id="topbar-sub">F&aacute;brica de Piensos</span>
+    </div>
+    <div id="topbar-clock"></div>
+  </div>
+
+  <!-- TABS -->
+  <nav id="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="equipos">Equipos</button>
+    <button class="tab" data-tab="ots">&Oacute;rdenes de Trabajo</button>
+    <button class="tab" data-tab="preventivo">Plan Preventivo</button>
+    <button class="tab" data-tab="incidencias">Incidencias</button>
+  </nav>
+
+  <main id="content">
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="section active">
+      <div id="kpi-row"></div>
+      <div class="section-grid">
+        <div class="card">
+          <h3>&#218;ltimas &Oacute;rdenes de Trabajo</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Descripci&oacute;n</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th>Prevista</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-ots-recientes"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Alertas de Mantenimiento</h3>
+          <ul id="lista-alertas"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- EQUIPOS -->
+    <section id="sec-equipos" class="section">
+      <div class="section-toolbar">
+        <h2>Equipos</h2>
+        <div class="toolbar-controls">
+          <select id="filter-equipo-tipo" class="filter-select">
+            <option value="todos">&mdash; Todos los tipos &mdash;</option>
+            <option value="molino">Molino</option>
+            <option value="mezcladora">Mezcladora</option>
+            <option value="extrusora">Extrusora</option>
+            <option value="silo">Silo</option>
+            <option value="cinta_transportadora">Cinta Transportadora</option>
+            <option value="dosificador">Dosificador</option>
+            <option value="caldera">Caldera</option>
+            <option value="compresor">Compresor</option>
+            <option value="ensacadora">Ensacadora</option>
+            <option value="otro">Otro</option>
+          </select>
+          <select id="filter-equipo-estado" class="filter-select">
+            <option value="todos">&mdash; Todos los estados &mdash;</option>
+            <option value="operativo">Operativo</option>
+            <option value="averiado">Averiado</option>
+            <option value="en_mantenimiento">En mantenimiento</option>
+          </select>
+          <button class="btn-primary" onclick="abrirModalEquipo()">+ Nuevo Equipo</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>C&oacute;digo</th>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Ubicaci&oacute;n</th>
+              <th>Estado</th>
+              <th>Instalaci&oacute;n</th>
+              <th>Proveedor</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-equipos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ÓRDENES DE TRABAJO -->
+    <section id="sec-ots" class="section">
+      <div class="section-toolbar">
+        <h2>&Oacute;rdenes de Trabajo</h2>
+        <div class="toolbar-controls">
+          <select id="filter-ot-estado" class="filter-select">
+            <option value="todos">&mdash; Todos los estados &mdash;</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_proceso">En proceso</option>
+            <option value="completada">Completada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <select id="filter-ot-tipo" class="filter-select">
+            <option value="todos">&mdash; Todos los tipos &mdash;</option>
+            <option value="correctivo">Correctivo</option>
+            <option value="preventivo">Preventivo</option>
+          </select>
+          <select id="filter-ot-prioridad" class="filter-select">
+            <option value="todos">&mdash; Todas las prioridades &mdash;</option>
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
+          <button class="btn-primary" onclick="abrirModalOT()">+ Nueva OT</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>Descripci&oacute;n</th>
+              <th>Tipo</th>
+              <th>Prioridad</th>
+              <th>Estado</th>
+              <th>Responsable</th>
+              <th>Prevista</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-ots"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PLAN PREVENTIVO -->
+    <section id="sec-preventivo" class="section">
+      <div class="section-toolbar">
+        <h2>Plan de Mantenimiento Preventivo</h2>
+        <button class="btn-primary" onclick="abrirModalPreventivo()">+ Nueva Tarea</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>Tarea</th>
+              <th>Frecuencia</th>
+              <th>&Uacute;ltima Ejecuci&oacute;n</th>
+              <th>Pr&oacute;xima Ejecuci&oacute;n</th>
+              <th>Responsable</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-preventivo"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- INCIDENCIAS -->
+    <section id="sec-incidencias" class="section">
+      <div class="section-toolbar">
+        <h2>Incidencias / Aver&iacute;as</h2>
+        <div class="toolbar-controls">
+          <select id="filter-inc-estado" class="filter-select">
+            <option value="todos">&mdash; Todas &mdash;</option>
+            <option value="abierta">Abierta</option>
+            <option value="resuelta">Resuelta</option>
+          </select>
+          <button class="btn-primary" onclick="abrirModalIncidencia()">+ Nueva Incidencia</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>Descripci&oacute;n</th>
+              <th>Causa</th>
+              <th>Parada (h)</th>
+              <th>Coste (&euro;)</th>
+              <th>Estado</th>
+              <th>Inicio</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-incidencias"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-box">
+      <div id="modal-header">
+        <h3 id="modal-titulo"></h3>
+        <button class="modal-close" onclick="cerrarModal()">&#10005;</button>
+      </div>
+      <div id="modal-body"></div>
+      <div id="modal-footer">
+        <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-primary" id="modal-guardar-btn" onclick="guardarModal()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// 1. CONSTANTS & HELPERS
+// ═══════════════════════════════════════════════
+
+var TODAY = function() { return new Date().toISOString().slice(0, 10); };
+
+var TIPOS_EQUIPO    = ['molino','mezcladora','extrusora','silo','cinta_transportadora','dosificador','caldera','compresor','ensacadora','otro'];
+var ESTADOS_EQUIPO  = ['operativo','averiado','en_mantenimiento'];
+var TIPOS_OT        = ['correctivo','preventivo'];
+var PRIORIDADES_OT  = ['alta','media','baja'];
+var ESTADOS_OT      = ['pendiente','en_proceso','completada','cancelada'];
+var FRECUENCIAS     = ['diario','semanal','mensual','trimestral','semestral','anual'];
+var CAUSAS_INC      = ['mecanica','electrica','neumatica','hidraulica','operacional'];
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function formatFecha(iso) {
+  if (!iso) return '&#8212;';
+  var parts = iso.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function diffDays(isoA, isoB) {
+  return Math.round((new Date(isoB) - new Date(isoA)) / 86400000);
+}
+
+function badge(estado) {
+  var label = estado.replace(/_/g, ' ');
+  return '<span class="badge badge-' + estado + '">' + label + '</span>';
+}
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function labelTipo(tipo) {
+  return tipo ? tipo.replace(/_/g, ' ') : '&#8212;';
+}
+
+function nombreEquipo(equipoId) {
+  var e = getItem(KEYS.equipos, equipoId);
+  return e ? esc(e.nombre) : '<em>&#8212;</em>';
+}
+
+function truncar(str, n) {
+  if (!str) return '';
+  return str.length > n ? esc(str.slice(0, n)) + '&hellip;' : esc(str);
+}
+
+// ═══════════════════════════════════════════════
+// 2. DATA LAYER
+// ═══════════════════════════════════════════════
+
+var KEYS = {
+  equipos:     'gmau_equipos',
+  ots:         'gmau_ots',
+  preventivo:  'gmau_preventivo',
+  incidencias: 'gmau_incidencias',
+  seeded:      'gmau_seeded'
+};
+
+function getData(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; }
+  catch(e) { return []; }
+}
+
+function setData(key, arr) {
+  localStorage.setItem(key, JSON.stringify(arr));
+}
+
+function addItem(key, item) {
+  var arr = getData(key);
+  arr.push(item);
+  setData(key, arr);
+}
+
+function updateItem(key, id, patch) {
+  setData(key, getData(key).map(function(x) {
+    return x.id === id ? Object.assign({}, x, patch) : x;
+  }));
+}
+
+function deleteItem(key, id) {
+  setData(key, getData(key).filter(function(x) { return x.id !== id; }));
+}
+
+function getItem(key, id) {
+  return getData(key).find(function(x) { return x.id === id; }) || null;
+}
+
+// ═══════════════════════════════════════════════
+// 3. SAMPLE DATA
+// ═══════════════════════════════════════════════
+
+var SAMPLE_EQUIPOS = [
+  { id:'eq01', nombre:'Molino de Martillos 1',          codigo:'MOL-001', tipo:'molino',              ubicacion:'Nave A - Molienda',       estado:'operativo',        fecha_instalacion:'2019-03-15', proveedor:'Bühler AG',      modelo:'DFZP-600' },
+  { id:'eq02', nombre:'Mezcladora Principal',            codigo:'MEZ-001', tipo:'mezcladora',           ubicacion:'Nave B - Mezcla',         estado:'operativo',        fecha_instalacion:'2019-03-15', proveedor:'Dinnissen',           modelo:'DPM-3000' },
+  { id:'eq03', nombre:'Extrusora de Pellets',            codigo:'EXT-001', tipo:'extrusora',            ubicacion:'Nave B - Peletizado',     estado:'en_mantenimiento', fecha_instalacion:'2020-06-01', proveedor:'Clextral',            modelo:'BC-72' },
+  { id:'eq04', nombre:'Silo Almac. Maíz',          codigo:'SIL-001', tipo:'silo',                 ubicacion:'Exterior - Zona Norte',   estado:'operativo',        fecha_instalacion:'2018-01-10', proveedor:'Silos Córdoba',  modelo:'SC-500T' },
+  { id:'eq05', nombre:'Silo Almac. Trigo',               codigo:'SIL-002', tipo:'silo',                 ubicacion:'Exterior - Zona Norte',   estado:'operativo',        fecha_instalacion:'2018-01-10', proveedor:'Silos Córdoba',  modelo:'SC-500T' },
+  { id:'eq06', nombre:'Cinta Transportadora Principal',  codigo:'CIN-001', tipo:'cinta_transportadora', ubicacion:'Nave A-B Pasillo',        estado:'operativo',        fecha_instalacion:'2019-03-15', proveedor:'Metso',               modelo:'CT-800' },
+  { id:'eq07', nombre:'Dosificador Microingredientes',   codigo:'DOS-001', tipo:'dosificador',          ubicacion:'Nave B - Dosificación', estado:'operativo',     fecha_instalacion:'2021-09-20', proveedor:'Acrison',             modelo:'403B' },
+  { id:'eq08', nombre:'Caldera de Vapor',                codigo:'CAL-001', tipo:'caldera',              ubicacion:'Sala Calderas',           estado:'operativo',        fecha_instalacion:'2017-11-05', proveedor:'Viessmann',           modelo:'Vitoplex 200' },
+  { id:'eq09', nombre:'Compresor de Aire',               codigo:'COM-001', tipo:'compresor',            ubicacion:'Sala Compresores',        estado:'averiado',         fecha_instalacion:'2020-02-14', proveedor:'Atlas Copco',         modelo:'GA55' },
+  { id:'eq10', nombre:'Ensacadora Automática',     codigo:'ENS-001', tipo:'ensacadora',           ubicacion:'Nave C - Envasado',       estado:'operativo',        fecha_instalacion:'2022-04-08', proveedor:'Haver & Boecker',     modelo:'INTEGRA 8' }
+];
+
+var SAMPLE_OTS = [
+  { id:'ot01', equipoId:'eq09', tipo:'correctivo',  prioridad:'alta',  estado:'en_proceso',  descripcion:'Fallo en válvula de presión — compresor no alcanza 8 bar',         responsable:'Carlos Díaz',   fecha_creacion:'2026-04-28', fecha_prevista:'2026-05-02', fecha_ejecucion:'', tiempo_estimado:4,   tiempo_real:null, coste:null },
+  { id:'ot02', equipoId:'eq03', tipo:'preventivo',  prioridad:'media', estado:'en_proceso',  descripcion:'Revisión anual extrusora — cambio rodamientos y engrase general',       responsable:'Ana Romero',         fecha_creacion:'2026-04-25', fecha_prevista:'2026-05-05', fecha_ejecucion:'', tiempo_estimado:8,   tiempo_real:null, coste:null },
+  { id:'ot03', equipoId:'eq08', tipo:'preventivo',  prioridad:'alta',  estado:'pendiente',   descripcion:'Inspección reglamentaria caldera — certificación anual',           responsable:'Pedro García',  fecha_creacion:'2026-04-20', fecha_prevista:'2026-04-30', fecha_ejecucion:'', tiempo_estimado:6,   tiempo_real:null, coste:null },
+  { id:'ot04', equipoId:'eq01', tipo:'preventivo',  prioridad:'baja',  estado:'completada',  descripcion:'Cambio martillos molino — desgaste programado',                              responsable:'Carlos Díaz',   fecha_creacion:'2026-04-10', fecha_prevista:'2026-04-15', fecha_ejecucion:'2026-04-14', tiempo_estimado:3, tiempo_real:2.5, coste:380 },
+  { id:'ot05', equipoId:'eq06', tipo:'correctivo',  prioridad:'media', estado:'completada',  descripcion:'Rotura correa cinta transportadora — cambio correa',                         responsable:'Ana Romero',         fecha_creacion:'2026-04-05', fecha_prevista:'2026-04-06', fecha_ejecucion:'2026-04-06', tiempo_estimado:2, tiempo_real:3,   coste:220 }
+];
+
+var SAMPLE_PREVENTIVO = [
+  { id:'pv01', equipoId:'eq01', tarea:'Inspección desgaste martillos',                  frecuencia:'mensual',     ultima_ejecucion:'2026-04-14', responsable:'Carlos Díaz' },
+  { id:'pv02', equipoId:'eq02', tarea:'Limpieza interior mezcladora',                        frecuencia:'semanal',     ultima_ejecucion:'2026-04-25', responsable:'Ana Romero' },
+  { id:'pv03', equipoId:'eq08', tarea:'Análisis agua caldera y purgas',                 frecuencia:'mensual',     ultima_ejecucion:'2026-03-15', responsable:'Pedro García' },
+  { id:'pv04', equipoId:'eq08', tarea:'Revisión certificación caldera',            frecuencia:'anual',       ultima_ejecucion:'2025-04-30', responsable:'Pedro García' },
+  { id:'pv05', equipoId:'eq09', tarea:'Cambio filtro aire compresor',                        frecuencia:'trimestral',  ultima_ejecucion:'2026-01-20', responsable:'Carlos Díaz' },
+  { id:'pv06', equipoId:'eq06', tarea:'Tensado y revisión correa transportadora',       frecuencia:'mensual',     ultima_ejecucion:'2026-04-20', responsable:'Ana Romero' },
+  { id:'pv07', equipoId:'eq04', tarea:'Inspección estructura silo maíz',           frecuencia:'semestral',   ultima_ejecucion:'2025-11-01', responsable:'Pedro García' },
+  { id:'pv08', equipoId:'eq07', tarea:'Calibración dosificador microingredientes',      frecuencia:'mensual',     ultima_ejecucion:'2026-04-01', responsable:'Ana Romero' }
+];
+
+var SAMPLE_INCIDENCIAS = [
+  { id:'inc01', equipoId:'eq09', descripcion:'Compresor pierde presión — válvula reguladora bloqueada',         causa:'neumatica',  tiempo_parada:6, coste:340, acciones_correctivas:'Sustitución válvula reguladora presión. En espera de pieza.', estado:'abierta',  fecha_inicio:'2026-04-28', fecha_resolucion:'' },
+  { id:'inc02', equipoId:'eq06', descripcion:'Rotura correa transportadora en tramo A-B',                                         causa:'mecanica',   tiempo_parada:3, coste:220, acciones_correctivas:'Cambio correa. Revisión tensores.',                                   estado:'resuelta', fecha_inicio:'2026-04-05', fecha_resolucion:'2026-04-06' },
+  { id:'inc03', equipoId:'eq03', descripcion:'Sobrecalentamiento motor extrusora — sensor térmico activo',             causa:'electrica',  tiempo_parada:2, coste:0,   acciones_correctivas:'Reset térmico. Planificado mantenimiento preventivo.',                 estado:'resuelta', fecha_inicio:'2026-04-22', fecha_resolucion:'2026-04-22' }
+];
+
+// ═══════════════════════════════════════════════
+// 4. NAVIGATION
+// ═══════════════════════════════════════════════
+
+function renderSection(tab) {
+  var map = {
+    dashboard:   renderDashboard,
+    equipos:     renderTablaEquipos,
+    ots:         renderTablaOTs,
+    preventivo:  renderTablaPreventivo,
+    incidencias: renderTablaIncidencias
+  };
+  if (map[tab]) map[tab]();
+}
+
+// ═══════════════════════════════════════════════
+// 5. DASHBOARD
+// ═══════════════════════════════════════════════
+
+function renderDashboard() {
+  var equipos    = getData(KEYS.equipos);
+  var ots        = getData(KEYS.ots);
+  var preventivo = getData(KEYS.preventivo);
+  var today      = TODAY();
+
+  var otsAbiertas  = ots.filter(function(o) { return ['pendiente','en_proceso'].indexOf(o.estado) >= 0; }).length;
+  var otsVencidas  = ots.filter(function(o) {
+    return ['pendiente','en_proceso'].indexOf(o.estado) >= 0 && o.fecha_prevista && o.fecha_prevista < today;
+  }).length;
+  var prevVencidos = preventivo.filter(function(p) {
+    var prox = calcProximaEjecucion(p);
+    return prox && prox <= today;
+  }).length;
+
+  var kpis = [
+    { label:'Total Equipos',          value: equipos.length,  cls: 'primary' },
+    { label:'OTs Abiertas',           value: otsAbiertas,     cls: otsAbiertas  > 0 ? 'warning' : 'success' },
+    { label:'OTs Vencidas',           value: otsVencidas,     cls: otsVencidas  > 0 ? 'danger'  : 'success' },
+    { label:'Preventivos Vencidos',   value: prevVencidos,    cls: prevVencidos > 0 ? 'danger'  : 'success' }
+  ];
+
+  document.getElementById('kpi-row').innerHTML = kpis.map(function(k) {
+    return '<div class="kpi-card ' + k.cls + '">' +
+             '<div class="kpi-value">' + k.value + '</div>' +
+             '<div class="kpi-label">' + k.label + '</div>' +
+           '</div>';
+  }).join('');
+
+  // OTs recientes
+  var recientes = ots.slice().sort(function(a,b) { return b.fecha_creacion.localeCompare(a.fecha_creacion); }).slice(0, 5);
+  var tbodyR = document.getElementById('tbody-ots-recientes');
+  if (recientes.length === 0) {
+    tbodyR.innerHTML = '<tr class="empty-row"><td colspan="5">No hay órdenes de trabajo</td></tr>';
+  } else {
+    tbodyR.innerHTML = recientes.map(function(o) {
+      var estadoV = calcEstadoVisualOT(o, today);
+      return '<tr>' +
+        '<td>' + nombreEquipo(o.equipoId) + '</td>' +
+        '<td>' + truncar(o.descripcion, 50) + '</td>' +
+        '<td>' + badge(o.tipo) + '</td>' +
+        '<td>' + badge(estadoV) + '</td>' +
+        '<td>' + formatFecha(o.fecha_prevista) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  // Alertas
+  var alertas = preventivo.map(function(p) {
+    var prox = calcProximaEjecucion(p);
+    if (!prox) return null;
+    var dias = diffDays(today, prox);
+    if (dias > 7) return null;
+    return { p: p, prox: prox, dias: dias };
+  }).filter(Boolean).sort(function(a,b) { return a.dias - b.dias; });
+
+  var listaEl = document.getElementById('lista-alertas');
+  if (alertas.length === 0) {
+    listaEl.innerHTML = '<li id="sin-alertas">&#10003; Sin alertas pendientes</li>';
+  } else {
+    listaEl.innerHTML = alertas.map(function(item) {
+      var cls   = item.dias <= 0 ? 'alerta-vencida' : 'alerta-proxima';
+      var label = item.dias <= 0
+        ? 'Vencida hace ' + Math.abs(item.dias) + ' día(s)'
+        : 'Vence en ' + item.dias + ' día(s)';
+      return '<li class="' + cls + '">' +
+        '<div>' +
+          '<div class="alerta-info">' + esc(item.p.tarea) + '</div>' +
+          '<div class="alerta-equipo">' + nombreEquipo(item.p.equipoId) + ' &middot; ' + formatFecha(item.prox) + '</div>' +
+        '</div>' +
+        '<span class="alerta-dias">' + label + '</span>' +
+      '</li>';
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// 6. EQUIPOS
+// ═══════════════════════════════════════════════
+
+function renderTablaEquipos() {
+  var equipos = getData(KEYS.equipos);
+  var tipoF   = document.getElementById('filter-equipo-tipo').value;
+  var estadoF = document.getElementById('filter-equipo-estado').value;
+
+  var filtrados = equipos.filter(function(e) {
+    return (tipoF   === 'todos' || e.tipo   === tipoF) &&
+           (estadoF === 'todos' || e.estado === estadoF);
+  });
+
+  var tbody = document.getElementById('tbody-equipos');
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No hay equipos que coincidan con los filtros</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtrados.map(function(e) {
+    return '<tr>' +
+      '<td><strong>' + esc(e.codigo) + '</strong></td>' +
+      '<td>' + esc(e.nombre) + '</td>' +
+      '<td>' + labelTipo(e.tipo) + '</td>' +
+      '<td>' + esc(e.ubicacion) + '</td>' +
+      '<td>' + badge(e.estado) + '</td>' +
+      '<td>' + formatFecha(e.fecha_instalacion) + '</td>' +
+      '<td>' + esc(e.proveedor) + '</td>' +
+      '<td class="td-acciones">' +
+        '<button class="btn-sm btn-info"    onclick="verEquipo(\'' + e.id + '\')">Ver</button>' +
+        '<button class="btn-sm btn-warning" onclick="abrirModalEquipo(\'' + e.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-danger"  onclick="eliminarEquipo(\'' + e.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function verEquipo(id) {
+  var e = getItem(KEYS.equipos, id);
+  if (!e) return;
+  var otsE  = getData(KEYS.ots).filter(function(o)  { return o.equipoId  === id; });
+  var incE  = getData(KEYS.incidencias).filter(function(i) { return i.equipoId  === id; });
+  var prevE = getData(KEYS.preventivo).filter(function(p)  { return p.equipoId  === id; });
+  var otsAbiertas = otsE.filter(function(o) { return ['pendiente','en_proceso'].indexOf(o.estado) >= 0; }).length;
+  var incAbiertas = incE.filter(function(i) { return i.estado === 'abierta'; }).length;
+
+  var body = '<div class="detail-grid">' +
+    '<div class="detail-field"><div class="detail-label">Código</div><div class="detail-value">' + esc(e.codigo) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Estado</div><div class="detail-value">' + badge(e.estado) + '</div></div>' +
+    '<div class="detail-field detail-full"><div class="detail-label">Nombre</div><div class="detail-value">' + esc(e.nombre) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Tipo</div><div class="detail-value">' + labelTipo(e.tipo) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Ubicación</div><div class="detail-value">' + esc(e.ubicacion) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Proveedor</div><div class="detail-value">' + esc(e.proveedor) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Modelo</div><div class="detail-value">' + esc(e.modelo) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Fecha Instalación</div><div class="detail-value">' + formatFecha(e.fecha_instalacion) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">OTs Asociadas</div><div class="detail-value">' + otsE.length + ' (' + otsAbiertas + ' abiertas)</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Tareas Preventivas</div><div class="detail-value">' + prevE.length + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Incidencias</div><div class="detail-value">' + incE.length + ' (' + incAbiertas + ' abiertas)</div></div>' +
+  '</div>';
+
+  modalMode = 'ver';
+  modalId   = null;
+  document.getElementById('modal-guardar-btn').classList.add('hidden');
+  abrirModal('Equipo: ' + e.nombre, body);
+}
+
+function buildFormEquipo(e) {
+  var tiposOpts = TIPOS_EQUIPO.map(function(t) {
+    return '<option value="' + t + '"' + (e && e.tipo === t ? ' selected' : '') + '>' + labelTipo(t) + '</option>';
+  }).join('');
+  var estadosOpts = ESTADOS_EQUIPO.map(function(s) {
+    return '<option value="' + s + '"' + (e && e.estado === s ? ' selected' : '') + '>' + s.replace(/_/g,' ') + '</option>';
+  }).join('');
+  return '<div class="form-grid">' +
+    '<div class="form-group"><label>Nombre *</label><input type="text" id="f-nombre" value="' + (e ? esc(e.nombre) : '') + '" placeholder="Ej: Molino de Martillos 1"></div>' +
+    '<div class="form-group"><label>Código *</label><input type="text" id="f-codigo" value="' + (e ? esc(e.codigo) : '') + '" placeholder="Ej: MOL-001"></div>' +
+    '<div class="form-group"><label>Tipo *</label><select id="f-tipo"><option value="">— Seleccionar —</option>' + tiposOpts + '</select></div>' +
+    '<div class="form-group"><label>Estado *</label><select id="f-estado"><option value="">— Seleccionar —</option>' + estadosOpts + '</select></div>' +
+    '<div class="form-group form-full"><label>Ubicación *</label><input type="text" id="f-ubicacion" value="' + (e ? esc(e.ubicacion) : '') + '" placeholder="Ej: Nave A - Molienda"></div>' +
+    '<div class="form-group"><label>Proveedor</label><input type="text" id="f-proveedor" value="' + (e ? esc(e.proveedor) : '') + '" placeholder="Ej: Bühler AG"></div>' +
+    '<div class="form-group"><label>Modelo</label><input type="text" id="f-modelo" value="' + (e ? esc(e.modelo) : '') + '" placeholder="Ej: DFZP-600"></div>' +
+    '<div class="form-group"><label>Fecha Instalación</label><input type="date" id="f-fecha_instalacion" value="' + (e && e.fecha_instalacion ? e.fecha_instalacion : '') + '"></div>' +
+  '</div>';
+}
+
+function abrirModalEquipo(id) {
+  var e = id ? getItem(KEYS.equipos, id) : null;
+  modalMode = 'equipo';
+  modalId   = id || null;
+  document.getElementById('modal-guardar-btn').classList.remove('hidden');
+  abrirModal(e ? 'Editar Equipo' : 'Nuevo Equipo', buildFormEquipo(e));
+}
+
+function guardarEquipo() {
+  var nombre   = document.getElementById('f-nombre').value.trim();
+  var codigo   = document.getElementById('f-codigo').value.trim();
+  var tipo     = document.getElementById('f-tipo').value;
+  var estado   = document.getElementById('f-estado').value;
+  var ubicacion= document.getElementById('f-ubicacion').value.trim();
+  var proveedor= document.getElementById('f-proveedor').value.trim();
+  var modelo   = document.getElementById('f-modelo').value.trim();
+  var fecha_i  = document.getElementById('f-fecha_instalacion').value;
+
+  var valid = true;
+  [['f-nombre',nombre],['f-codigo',codigo],['f-tipo',tipo],['f-estado',estado],['f-ubicacion',ubicacion]].forEach(function(pair) {
+    var el = document.getElementById(pair[0]);
+    if (!pair[1]) { el.classList.add('error'); valid = false; }
+    else el.classList.remove('error');
+  });
+  if (!valid) { mostrarToast('Completa los campos obligatorios (*)', 'error'); return; }
+
+  var data = { nombre: nombre, codigo: codigo, tipo: tipo, estado: estado, ubicacion: ubicacion,
+               proveedor: proveedor, modelo: modelo, fecha_instalacion: fecha_i };
+  if (modalId) {
+    updateItem(KEYS.equipos, modalId, data);
+    mostrarToast('Equipo actualizado correctamente', 'success');
+  } else {
+    data.id = genId();
+    addItem(KEYS.equipos, data);
+    mostrarToast('Equipo creado correctamente', 'success');
+  }
+  cerrarModal();
+  renderTablaEquipos();
+  renderDashboard();
+}
+
+function eliminarEquipo(id) {
+  var e = getItem(KEYS.equipos, id);
+  if (!e) return;
+  if (!confirm('¿Eliminar el equipo "' + e.nombre + '"?\nTambién se eliminarán sus OTs, tareas preventivas e incidencias asociadas.')) return;
+  deleteItem(KEYS.equipos, id);
+  setData(KEYS.ots,         getData(KEYS.ots).filter(function(x)         { return x.equipoId !== id; }));
+  setData(KEYS.preventivo,  getData(KEYS.preventivo).filter(function(x)  { return x.equipoId !== id; }));
+  setData(KEYS.incidencias, getData(KEYS.incidencias).filter(function(x) { return x.equipoId !== id; }));
+  mostrarToast('Equipo eliminado', 'success');
+  renderTablaEquipos();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// 7. ÓRDENES DE TRABAJO
+// ═══════════════════════════════════════════════
+
+function calcEstadoVisualOT(ot, today) {
+  if (['pendiente','en_proceso'].indexOf(ot.estado) >= 0 && ot.fecha_prevista && ot.fecha_prevista < today) {
+    return 'vencida';
+  }
+  return ot.estado;
+}
+
+function renderTablaOTs() {
+  var ots     = getData(KEYS.ots);
+  var estadoF = document.getElementById('filter-ot-estado').value;
+  var tipoF   = document.getElementById('filter-ot-tipo').value;
+  var prioF   = document.getElementById('filter-ot-prioridad').value;
+  var today   = TODAY();
+
+  var filtrados = ots.filter(function(o) {
+    return (estadoF === 'todos' || o.estado    === estadoF) &&
+           (tipoF   === 'todos' || o.tipo      === tipoF) &&
+           (prioF   === 'todos' || o.prioridad === prioF);
+  }).sort(function(a,b) { return b.fecha_creacion.localeCompare(a.fecha_creacion); });
+
+  var tbody = document.getElementById('tbody-ots');
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No hay órdenes de trabajo que coincidan</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtrados.map(function(o) {
+    var estadoV = calcEstadoVisualOT(o, today);
+    var rowCls  = estadoV === 'vencida' ? 'row-vencida' : '';
+    return '<tr class="' + rowCls + '">' +
+      '<td>' + nombreEquipo(o.equipoId) + '</td>' +
+      '<td>' + truncar(o.descripcion, 45) + '</td>' +
+      '<td>' + badge(o.tipo) + '</td>' +
+      '<td>' + badge(o.prioridad) + '</td>' +
+      '<td>' + badge(estadoV) + '</td>' +
+      '<td>' + esc(o.responsable) + '</td>' +
+      '<td>' + formatFecha(o.fecha_prevista) + '</td>' +
+      '<td class="td-acciones">' +
+        '<button class="btn-sm btn-info"    onclick="verOT(\'' + o.id + '\')">Ver</button>' +
+        '<button class="btn-sm btn-warning" onclick="abrirModalOT(\'' + o.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-danger"  onclick="eliminarOT(\'' + o.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function buildFormOT(o) {
+  var equipos = getData(KEYS.equipos);
+  var eqOpts  = equipos.map(function(e) {
+    return '<option value="' + e.id + '"' + (o && o.equipoId === e.id ? ' selected' : '') + '>' + esc(e.nombre) + '</option>';
+  }).join('');
+  var tipoOpts  = TIPOS_OT.map(function(t)    { return '<option value="' + t + '"' + (o && o.tipo      === t ? ' selected' : '') + '>' + t + '</option>'; }).join('');
+  var prioOpts  = PRIORIDADES_OT.map(function(p) { return '<option value="' + p + '"' + (o && o.prioridad === p ? ' selected' : '') + '>' + p + '</option>'; }).join('');
+  var estOpts   = ESTADOS_OT.map(function(s)  { return '<option value="' + s + '"' + (o && o.estado    === s ? ' selected' : '') + '>' + s.replace(/_/g,' ') + '</option>'; }).join('');
+
+  return '<div class="form-grid">' +
+    '<div class="form-group form-full"><label>Equipo *</label><select id="f-equipoId"><option value="">— Seleccionar equipo —</option>' + eqOpts + '</select></div>' +
+    '<div class="form-group form-full"><label>Descripción *</label><textarea id="f-descripcion" rows="3">' + (o ? esc(o.descripcion) : '') + '</textarea></div>' +
+    '<div class="form-group"><label>Tipo *</label><select id="f-tipo"><option value="">—</option>' + tipoOpts + '</select></div>' +
+    '<div class="form-group"><label>Prioridad *</label><select id="f-prioridad"><option value="">—</option>' + prioOpts + '</select></div>' +
+    '<div class="form-group"><label>Estado *</label><select id="f-estado"><option value="">—</option>' + estOpts + '</select></div>' +
+    '<div class="form-group"><label>Responsable *</label><input type="text" id="f-responsable" value="' + (o ? esc(o.responsable) : '') + '" placeholder="Nombre del técnico"></div>' +
+    '<div class="form-group"><label>Fecha Prevista</label><input type="date" id="f-fecha_prevista" value="' + (o && o.fecha_prevista ? o.fecha_prevista : '') + '"></div>' +
+    '<div class="form-group"><label>Fecha Ejecución</label><input type="date" id="f-fecha_ejecucion" value="' + (o && o.fecha_ejecucion ? o.fecha_ejecucion : '') + '"></div>' +
+    '<div class="form-group"><label>Tiempo Estimado (h)</label><input type="number" id="f-tiempo_estimado" value="' + (o && o.tiempo_estimado != null ? o.tiempo_estimado : '') + '" min="0" step="0.5"></div>' +
+    '<div class="form-group"><label>Tiempo Real (h)</label><input type="number" id="f-tiempo_real" value="' + (o && o.tiempo_real != null ? o.tiempo_real : '') + '" min="0" step="0.5"></div>' +
+    '<div class="form-group"><label>Coste (&euro;)</label><input type="number" id="f-coste" value="' + (o && o.coste != null ? o.coste : '') + '" min="0" step="0.01"></div>' +
+  '</div>';
+}
+
+function verOT(id) {
+  var o = getItem(KEYS.ots, id);
+  if (!o) return;
+  var estadoV = calcEstadoVisualOT(o, TODAY());
+  var body = '<div class="detail-grid">' +
+    '<div class="detail-field"><div class="detail-label">Estado</div><div class="detail-value">' + badge(estadoV) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Creada</div><div class="detail-value">' + formatFecha(o.fecha_creacion) + '</div></div>' +
+    '<div class="detail-field detail-full"><div class="detail-label">Equipo</div><div class="detail-value">' + nombreEquipo(o.equipoId) + '</div></div>' +
+    '<div class="detail-field detail-full"><div class="detail-label">Descripción</div><div class="detail-value">' + esc(o.descripcion) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Tipo</div><div class="detail-value">' + badge(o.tipo) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Prioridad</div><div class="detail-value">' + badge(o.prioridad) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Responsable</div><div class="detail-value">' + esc(o.responsable) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Fecha Prevista</div><div class="detail-value">' + formatFecha(o.fecha_prevista) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Fecha Ejecución</div><div class="detail-value">' + formatFecha(o.fecha_ejecucion) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Tiempo Estimado</div><div class="detail-value">' + (o.tiempo_estimado != null ? o.tiempo_estimado + ' h' : '—') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Tiempo Real</div><div class="detail-value">' + (o.tiempo_real != null ? o.tiempo_real + ' h' : '—') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Coste</div><div class="detail-value">' + (o.coste != null ? o.coste + ' €' : '—') + '</div></div>' +
+  '</div>';
+  modalMode = 'ver';
+  modalId   = null;
+  document.getElementById('modal-guardar-btn').classList.add('hidden');
+  abrirModal('Detalle Órden de Trabajo', body);
+}
+
+function abrirModalOT(id) {
+  var o = id ? getItem(KEYS.ots, id) : null;
+  modalMode = 'ot';
+  modalId   = id || null;
+  document.getElementById('modal-guardar-btn').classList.remove('hidden');
+  abrirModal(o ? 'Editar Órden de Trabajo' : 'Nueva Órden de Trabajo', buildFormOT(o));
+}
+
+function guardarOT() {
+  var equipoId    = document.getElementById('f-equipoId').value;
+  var descripcion = document.getElementById('f-descripcion').value.trim();
+  var tipo        = document.getElementById('f-tipo').value;
+  var prioridad   = document.getElementById('f-prioridad').value;
+  var estado      = document.getElementById('f-estado').value;
+  var responsable = document.getElementById('f-responsable').value.trim();
+  var fPrevista   = document.getElementById('f-fecha_prevista').value;
+  var fEjecucion  = document.getElementById('f-fecha_ejecucion').value;
+  var tEstimado   = document.getElementById('f-tiempo_estimado').value;
+  var tReal       = document.getElementById('f-tiempo_real').value;
+  var costeVal    = document.getElementById('f-coste').value;
+
+  var valid = true;
+  [['f-equipoId',equipoId],['f-descripcion',descripcion],['f-tipo',tipo],['f-prioridad',prioridad],['f-estado',estado],['f-responsable',responsable]].forEach(function(pair) {
+    var el = document.getElementById(pair[0]);
+    if (!pair[1]) { el.classList.add('error'); valid = false; }
+    else el.classList.remove('error');
+  });
+  if (!valid) { mostrarToast('Completa los campos obligatorios (*)', 'error'); return; }
+
+  var autoFechaEjec = (estado === 'completada' && !fEjecucion) ? TODAY() : fEjecucion;
+  var data = {
+    equipoId: equipoId, descripcion: descripcion, tipo: tipo, prioridad: prioridad,
+    estado: estado, responsable: responsable,
+    fecha_prevista: fPrevista, fecha_ejecucion: autoFechaEjec,
+    tiempo_estimado: tEstimado !== '' ? parseFloat(tEstimado) : null,
+    tiempo_real:     tReal     !== '' ? parseFloat(tReal)     : null,
+    coste:           costeVal  !== '' ? parseFloat(costeVal)  : null
+  };
+  if (modalId) {
+    updateItem(KEYS.ots, modalId, data);
+    mostrarToast('OT actualizada correctamente', 'success');
+  } else {
+    data.id = genId();
+    data.fecha_creacion = TODAY();
+    addItem(KEYS.ots, data);
+    mostrarToast('OT creada correctamente', 'success');
+  }
+  cerrarModal();
+  renderTablaOTs();
+  renderDashboard();
+}
+
+function eliminarOT(id) {
+  if (!confirm('¿Eliminar esta orden de trabajo?')) return;
+  deleteItem(KEYS.ots, id);
+  mostrarToast('OT eliminada', 'success');
+  renderTablaOTs();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// 8. PLAN PREVENTIVO
+// ═══════════════════════════════════════════════
+
+function calcProximaEjecucion(tarea) {
+  if (!tarea.ultima_ejecucion) return null;
+  var base = new Date(tarea.ultima_ejecucion + 'T00:00:00');
+  switch (tarea.frecuencia) {
+    case 'diario':     base.setDate(base.getDate() + 1);          break;
+    case 'semanal':    base.setDate(base.getDate() + 7);          break;
+    case 'mensual':    base.setMonth(base.getMonth() + 1);        break;
+    case 'trimestral': base.setMonth(base.getMonth() + 3);        break;
+    case 'semestral':  base.setMonth(base.getMonth() + 6);        break;
+    case 'anual':      base.setFullYear(base.getFullYear() + 1);  break;
+    default: return null;
+  }
+  return base.toISOString().slice(0, 10);
+}
+
+function renderTablaPreventivo() {
+  var tareas = getData(KEYS.preventivo);
+  var today  = TODAY();
+  var tbody  = document.getElementById('tbody-preventivo');
+
+  if (tareas.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No hay tareas preventivas definidas</td></tr>';
+    return;
+  }
+  tbody.innerHTML = tareas.map(function(t) {
+    var prox     = calcProximaEjecucion(t);
+    var rowCls   = '';
+    var badgeExt = '';
+    if (prox) {
+      var dias = diffDays(today, prox);
+      if (dias <= 0)      { rowCls = 'row-vencida'; badgeExt = ' ' + badge('vencida'); }
+      else if (dias <= 7) { rowCls = 'row-proxima'; }
+    }
+    return '<tr class="' + rowCls + '">' +
+      '<td>' + nombreEquipo(t.equipoId) + '</td>' +
+      '<td>' + esc(t.tarea) + '</td>' +
+      '<td>' + t.frecuencia + '</td>' +
+      '<td>' + formatFecha(t.ultima_ejecucion) + '</td>' +
+      '<td>' + (prox ? formatFecha(prox) : '—') + badgeExt + '</td>' +
+      '<td>' + esc(t.responsable) + '</td>' +
+      '<td class="td-acciones">' +
+        '<button class="btn-sm btn-success" onclick="registrarEjecucion(\'' + t.id + '\')">&#10003; Ejecutada</button>' +
+        '<button class="btn-sm btn-warning" onclick="abrirModalPreventivo(\'' + t.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-danger"  onclick="eliminarPreventivo(\'' + t.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function buildFormPreventivo(t) {
+  var equipos  = getData(KEYS.equipos);
+  var eqOpts   = equipos.map(function(e) {
+    return '<option value="' + e.id + '"' + (t && t.equipoId === e.id ? ' selected' : '') + '>' + esc(e.nombre) + '</option>';
+  }).join('');
+  var freqOpts = FRECUENCIAS.map(function(f) {
+    return '<option value="' + f + '"' + (t && t.frecuencia === f ? ' selected' : '') + '>' + f + '</option>';
+  }).join('');
+  return '<div class="form-grid">' +
+    '<div class="form-group form-full"><label>Equipo *</label><select id="f-equipoId"><option value="">— Seleccionar equipo —</option>' + eqOpts + '</select></div>' +
+    '<div class="form-group form-full"><label>Tarea *</label><input type="text" id="f-tarea" value="' + (t ? esc(t.tarea) : '') + '" placeholder="Ej: Cambio filtro aire compresor"></div>' +
+    '<div class="form-group"><label>Frecuencia *</label><select id="f-frecuencia"><option value="">—</option>' + freqOpts + '</select></div>' +
+    '<div class="form-group"><label>Responsable *</label><input type="text" id="f-responsable" value="' + (t ? esc(t.responsable) : '') + '" placeholder="Nombre del técnico"></div>' +
+    '<div class="form-group"><label>Última Ejecución</label><input type="date" id="f-ultima_ejecucion" value="' + (t && t.ultima_ejecucion ? t.ultima_ejecucion : '') + '"></div>' +
+  '</div>';
+}
+
+function abrirModalPreventivo(id) {
+  var t = id ? getItem(KEYS.preventivo, id) : null;
+  modalMode = 'preventivo';
+  modalId   = id || null;
+  document.getElementById('modal-guardar-btn').classList.remove('hidden');
+  abrirModal(t ? 'Editar Tarea Preventiva' : 'Nueva Tarea Preventiva', buildFormPreventivo(t));
+}
+
+function guardarPreventivo() {
+  var equipoId = document.getElementById('f-equipoId').value;
+  var tarea    = document.getElementById('f-tarea').value.trim();
+  var frecuencia= document.getElementById('f-frecuencia').value;
+  var responsable = document.getElementById('f-responsable').value.trim();
+  var ultEjec  = document.getElementById('f-ultima_ejecucion').value;
+
+  var valid = true;
+  [['f-equipoId',equipoId],['f-tarea',tarea],['f-frecuencia',frecuencia],['f-responsable',responsable]].forEach(function(pair) {
+    var el = document.getElementById(pair[0]);
+    if (!pair[1]) { el.classList.add('error'); valid = false; }
+    else el.classList.remove('error');
+  });
+  if (!valid) { mostrarToast('Completa los campos obligatorios (*)', 'error'); return; }
+
+  var data = { equipoId: equipoId, tarea: tarea, frecuencia: frecuencia, responsable: responsable, ultima_ejecucion: ultEjec };
+  if (modalId) {
+    updateItem(KEYS.preventivo, modalId, data);
+    mostrarToast('Tarea actualizada correctamente', 'success');
+  } else {
+    data.id = genId();
+    addItem(KEYS.preventivo, data);
+    mostrarToast('Tarea creada correctamente', 'success');
+  }
+  cerrarModal();
+  renderTablaPreventivo();
+  renderDashboard();
+}
+
+function registrarEjecucion(id) {
+  updateItem(KEYS.preventivo, id, { ultima_ejecucion: TODAY() });
+  mostrarToast('Ejecución registrada · Próxima fecha actualizada', 'success');
+  renderTablaPreventivo();
+  renderDashboard();
+}
+
+function eliminarPreventivo(id) {
+  if (!confirm('¿Eliminar esta tarea preventiva?')) return;
+  deleteItem(KEYS.preventivo, id);
+  mostrarToast('Tarea eliminada', 'success');
+  renderTablaPreventivo();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// 9. INCIDENCIAS
+// ═══════════════════════════════════════════════
+
+function renderTablaIncidencias() {
+  var incidencias = getData(KEYS.incidencias);
+  var estadoF     = document.getElementById('filter-inc-estado').value;
+
+  var filtradas = incidencias.filter(function(i) {
+    return estadoF === 'todos' || i.estado === estadoF;
+  }).sort(function(a,b) { return b.fecha_inicio.localeCompare(a.fecha_inicio); });
+
+  var tbody = document.getElementById('tbody-incidencias');
+  if (filtradas.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No hay incidencias que coincidan</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtradas.map(function(i) {
+    var resolver = i.estado === 'abierta'
+      ? '<button class="btn-sm btn-success" onclick="resolverIncidencia(\'' + i.id + '\')">Resolver</button>'
+      : '';
+    return '<tr>' +
+      '<td>' + nombreEquipo(i.equipoId) + '</td>' +
+      '<td>' + truncar(i.descripcion, 45) + '</td>' +
+      '<td>' + esc(i.causa) + '</td>' +
+      '<td>' + (i.tiempo_parada != null ? i.tiempo_parada + ' h' : '—') + '</td>' +
+      '<td>' + (i.coste != null ? i.coste + ' €' : '—') + '</td>' +
+      '<td>' + badge(i.estado) + '</td>' +
+      '<td>' + formatFecha(i.fecha_inicio) + '</td>' +
+      '<td class="td-acciones">' +
+        '<button class="btn-sm btn-info"    onclick="verIncidencia(\'' + i.id + '\')">Ver</button>' +
+        resolver +
+        '<button class="btn-sm btn-warning" onclick="abrirModalIncidencia(\'' + i.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-danger"  onclick="eliminarIncidencia(\'' + i.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function buildFormIncidencia(i) {
+  var equipos  = getData(KEYS.equipos);
+  var eqOpts   = equipos.map(function(e) {
+    return '<option value="' + e.id + '"' + (i && i.equipoId === e.id ? ' selected' : '') + '>' + esc(e.nombre) + '</option>';
+  }).join('');
+  var causaOpts  = CAUSAS_INC.map(function(c) {
+    return '<option value="' + c + '"' + (i && i.causa  === c ? ' selected' : '') + '>' + c + '</option>';
+  }).join('');
+  var estadoOpts = ['abierta','resuelta'].map(function(s) {
+    return '<option value="' + s + '"' + (i && i.estado === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  return '<div class="form-grid">' +
+    '<div class="form-group form-full"><label>Equipo *</label><select id="f-equipoId"><option value="">— Seleccionar equipo —</option>' + eqOpts + '</select></div>' +
+    '<div class="form-group form-full"><label>Descripción *</label><textarea id="f-descripcion" rows="3">' + (i ? esc(i.descripcion) : '') + '</textarea></div>' +
+    '<div class="form-group"><label>Causa *</label><select id="f-causa"><option value="">—</option>' + causaOpts + '</select></div>' +
+    '<div class="form-group"><label>Estado *</label><select id="f-estado"><option value="">—</option>' + estadoOpts + '</select></div>' +
+    '<div class="form-group"><label>Tiempo de Parada (h)</label><input type="number" id="f-tiempo_parada" value="' + (i && i.tiempo_parada != null ? i.tiempo_parada : '') + '" min="0" step="0.5"></div>' +
+    '<div class="form-group"><label>Coste (&euro;)</label><input type="number" id="f-coste" value="' + (i && i.coste != null ? i.coste : '') + '" min="0" step="0.01"></div>' +
+    '<div class="form-group"><label>Fecha Inicio</label><input type="date" id="f-fecha_inicio" value="' + (i && i.fecha_inicio ? i.fecha_inicio : TODAY()) + '"></div>' +
+    '<div class="form-group"><label>Fecha Resolución</label><input type="date" id="f-fecha_resolucion" value="' + (i && i.fecha_resolucion ? i.fecha_resolucion : '') + '"></div>' +
+    '<div class="form-group form-full"><label>Acciones Correctivas</label><textarea id="f-acciones_correctivas" rows="3">' + (i ? esc(i.acciones_correctivas) : '') + '</textarea></div>' +
+  '</div>';
+}
+
+function verIncidencia(id) {
+  var i = getItem(KEYS.incidencias, id);
+  if (!i) return;
+  var body = '<div class="detail-grid">' +
+    '<div class="detail-field"><div class="detail-label">Estado</div><div class="detail-value">' + badge(i.estado) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Causa</div><div class="detail-value">' + esc(i.causa) + '</div></div>' +
+    '<div class="detail-field detail-full"><div class="detail-label">Equipo</div><div class="detail-value">' + nombreEquipo(i.equipoId) + '</div></div>' +
+    '<div class="detail-field detail-full"><div class="detail-label">Descripción</div><div class="detail-value">' + esc(i.descripcion) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Tiempo Parada</div><div class="detail-value">' + (i.tiempo_parada != null ? i.tiempo_parada + ' h' : '—') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Coste</div><div class="detail-value">' + (i.coste != null ? i.coste + ' €' : '—') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Fecha Inicio</div><div class="detail-value">' + formatFecha(i.fecha_inicio) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Fecha Resolución</div><div class="detail-value">' + formatFecha(i.fecha_resolucion) + '</div></div>' +
+    '<div class="detail-field detail-full"><div class="detail-label">Acciones Correctivas</div><div class="detail-value">' + (esc(i.acciones_correctivas) || '—') + '</div></div>' +
+  '</div>';
+  modalMode = 'ver';
+  modalId   = null;
+  document.getElementById('modal-guardar-btn').classList.add('hidden');
+  abrirModal('Detalle Incidencia', body);
+}
+
+function abrirModalIncidencia(id) {
+  var i = id ? getItem(KEYS.incidencias, id) : null;
+  modalMode = 'incidencia';
+  modalId   = id || null;
+  document.getElementById('modal-guardar-btn').classList.remove('hidden');
+  abrirModal(i ? 'Editar Incidencia' : 'Nueva Incidencia', buildFormIncidencia(i));
+}
+
+function guardarIncidencia() {
+  var equipoId   = document.getElementById('f-equipoId').value;
+  var descripcion= document.getElementById('f-descripcion').value.trim();
+  var causa      = document.getElementById('f-causa').value;
+  var estado     = document.getElementById('f-estado').value;
+  var tParada    = document.getElementById('f-tiempo_parada').value;
+  var costeVal   = document.getElementById('f-coste').value;
+  var fInicio    = document.getElementById('f-fecha_inicio').value;
+  var fResol     = document.getElementById('f-fecha_resolucion').value;
+  var acciones   = document.getElementById('f-acciones_correctivas').value.trim();
+
+  var valid = true;
+  [['f-equipoId',equipoId],['f-descripcion',descripcion],['f-causa',causa],['f-estado',estado]].forEach(function(pair) {
+    var el = document.getElementById(pair[0]);
+    if (!pair[1]) { el.classList.add('error'); valid = false; }
+    else el.classList.remove('error');
+  });
+  if (!valid) { mostrarToast('Completa los campos obligatorios (*)', 'error'); return; }
+
+  var autoResol = (estado === 'resuelta' && !fResol) ? TODAY() : fResol;
+  var data = {
+    equipoId: equipoId, descripcion: descripcion, causa: causa, estado: estado,
+    tiempo_parada:        tParada  !== '' ? parseFloat(tParada)  : null,
+    coste:                costeVal !== '' ? parseFloat(costeVal) : null,
+    fecha_inicio:         fInicio || TODAY(),
+    fecha_resolucion:     autoResol,
+    acciones_correctivas: acciones
+  };
+  if (modalId) {
+    updateItem(KEYS.incidencias, modalId, data);
+    mostrarToast('Incidencia actualizada', 'success');
+  } else {
+    data.id = genId();
+    addItem(KEYS.incidencias, data);
+    mostrarToast('Incidencia registrada', 'success');
+  }
+  cerrarModal();
+  renderTablaIncidencias();
+  renderDashboard();
+}
+
+function resolverIncidencia(id) {
+  updateItem(KEYS.incidencias, id, { estado: 'resuelta', fecha_resolucion: TODAY() });
+  mostrarToast('Incidencia marcada como resuelta', 'success');
+  renderTablaIncidencias();
+  renderDashboard();
+}
+
+function eliminarIncidencia(id) {
+  if (!confirm('¿Eliminar esta incidencia?')) return;
+  deleteItem(KEYS.incidencias, id);
+  mostrarToast('Incidencia eliminada', 'success');
+  renderTablaIncidencias();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// 10. MODAL ENGINE
+// ═══════════════════════════════════════════════
+
+var modalMode = null;
+var modalId   = null;
+
+function abrirModal(titulo, bodyHTML) {
+  document.getElementById('modal-titulo').textContent = titulo;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function cerrarModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.add('hidden');
+  modalMode = null;
+  modalId   = null;
+}
+
+function guardarModal() {
+  var handlers = {
+    equipo:     guardarEquipo,
+    ot:         guardarOT,
+    preventivo: guardarPreventivo,
+    incidencia: guardarIncidencia
+  };
+  if (handlers[modalMode]) handlers[modalMode]();
+}
+
+// ═══════════════════════════════════════════════
+// 11. TOAST
+// ═══════════════════════════════════════════════
+
+var toastTimer = null;
+
+function mostrarToast(mensaje, tipo) {
+  var t = document.getElementById('toast');
+  t.textContent = mensaje;
+  t.className   = tipo || '';
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.add('hidden'); }, 3000);
+}
+
+// ═══════════════════════════════════════════════
+// 12. INIT
+// ═══════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Seed sample data on first run
+  if (!localStorage.getItem(KEYS.seeded)) {
+    setData(KEYS.equipos,     SAMPLE_EQUIPOS);
+    setData(KEYS.ots,         SAMPLE_OTS);
+    setData(KEYS.preventivo,  SAMPLE_PREVENTIVO);
+    setData(KEYS.incidencias, SAMPLE_INCIDENCIAS);
+    localStorage.setItem(KEYS.seeded, '1');
+  }
+
+  // Tab navigation
+  document.querySelectorAll('.tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(b)    { b.classList.remove('active'); });
+      document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('sec-' + btn.dataset.tab).classList.add('active');
+      renderSection(btn.dataset.tab);
+    });
+  });
+
+  // Filter listeners
+  ['filter-equipo-tipo','filter-equipo-estado'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', renderTablaEquipos);
+  });
+  ['filter-ot-estado','filter-ot-tipo','filter-ot-prioridad'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', renderTablaOTs);
+  });
+  document.getElementById('filter-inc-estado').addEventListener('change', renderTablaIncidencias);
+
+  // Modal overlay click to close
+  document.getElementById('modal-overlay').addEventListener('click', cerrarModal);
+
+  // Live clock
+  function updateClock() {
+    document.getElementById('topbar-clock').textContent =
+      new Date().toLocaleString('es-ES', {
+        weekday: 'short', day: '2-digit', month: '2-digit',
+        year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Render initial section
+  renderDashboard();
+});
+</script>
+</body>
+</html>
